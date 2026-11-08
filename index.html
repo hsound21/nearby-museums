@@ -99,6 +99,10 @@ button.add.on{background:var(--ink);color:var(--bg)}
       <option value="3000" selected>3km</option>
       <option value="5000">5km</option>
       <option value="10000">10km</option>
+      <option value="20000">20km</option>
+      <option value="30000">30km</option>
+      <option value="50000">50km</option>
+      <option value="100000">100km</option>
     </select>
   </div>
   <div class="rows">
@@ -340,7 +344,8 @@ function render(note){
   markers.forEach(m=>m.setMap(null));markers=[];if(iw)iw.close();
   const shown=places.filter(p=>active[p.type]&&!off[p.type].has(p.kind));
   $('list').innerHTML=shown.length?'':`<p style="color:var(--sub);padding:8px">${loading?'⏳ 불러오는 중…':'검색 결과가 없습니다. 반경을 넓혀 보세요.'}</p>`;
-  shown.forEach(p=>{
+  const MAX=500; // 반경이 넓을 때 지도·목록이 느려지지 않도록 가까운 순으로 제한
+  shown.slice(0,MAX).forEach(p=>{
     const m=new naver.maps.Marker({position:LL(p.lat,p.lon),map:tab==='route'?null:map,title:p.name,
       icon:{content:`<div style="width:16px;height:16px;border-radius:50%;background:${COLOR[p.type]};border:2px solid #fff;box-shadow:0 0 3px #0007"></div>`,anchor:new naver.maps.Point(8,8)}});
     const open=()=>{if(!iw)iw=new naver.maps.InfoWindow({borderWidth:1,anchorSize:new naver.maps.Size(10,8)});
@@ -358,7 +363,7 @@ function render(note){
     $('list').appendChild(el);
   });
   const c={museum:0,art:0,heritage:0,festival:0};shown.forEach(p=>c[p.type]++);
-  setStatus(`총 ${shown.length}곳 (박물관 ${c.museum} · 미술관 ${c.art} · 문화재 ${c.heritage} · 축제 ${c.festival})`+(note?` — ${note}`:''));
+  setStatus(`총 ${shown.length}곳 (박물관 ${c.museum} · 미술관 ${c.art} · 문화재 ${c.heritage} · 축제 ${c.festival})`+(shown.length>MAX?` — 가까운 ${MAX}곳만 표시 중 (반경이나 유형을 줄여 보세요)`:'')+(note?` — ${note}`:''));
 }
 
 function setCenter(lat,lon,fit){
