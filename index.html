@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 주변 박물관·미술관</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#777;--line:#e4e0d6;
+--museum:#c0392b;--art:#2e6fd8;--heritage:#b8860b;}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1d;--card:#262629;--ink:#eee;--sub:#9a9a9f;--line:#38383c;}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{position:relative;z-index:1000;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+h1{font-size:18px;margin:0 0 8px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer;font-size:14px}
+.rows{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
+.grp{position:relative;display:flex}
+.grp .chip{border-radius:999px 0 0 999px}
+.dd{border:1px solid var(--line);border-left:0;background:var(--bg);color:var(--ink);padding:6px 10px;border-radius:0 999px 999px 0;cursor:pointer;font-size:12px}
+.dd[aria-expanded=true]{background:var(--ink);color:var(--bg)}
+.kinds{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:2000;flex-direction:column;gap:6px;min-width:220px;max-height:55vh;overflow-y:auto;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px #0003;font-size:14px}
+.kinds.open{display:flex}
+.kinds label{white-space:nowrap;cursor:pointer}
+.kinds .hint{color:var(--sub)}
+.chip.on{color:#fff;border-color:transparent}
+.chip[data-t=museum].on{background:var(--museum)}
+.chip[data-t=art].on{background:var(--art)}
+.chip[data-t=heritage].on{background:var(--heritage)}
+button.loc{border:0;background:var(--ink);color:var(--bg);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+select{padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+#status{font-size:13px;color:var(--sub);margin-top:6px}
+main{flex:1;display:grid;grid-template-columns:380px 1fr;min-height:0}
+#side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--card)}
+.tabs button{flex:1;padding:10px;border:0;border-bottom:2px solid transparent;background:none;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+#list,#routePanel{flex:1;overflow:auto;padding:10px;min-height:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;margin-bottom:8px}
+.opts input[type=number]{width:56px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.stop{display:flex;gap:8px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:4px}
+.stop .no{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);text-align:center;font-size:12px;line-height:22px}
+.stop .nm{font-weight:600;font-size:14px;cursor:pointer}
+.stop .x{margin-left:auto;border:0;background:none;color:var(--sub);cursor:pointer;font-size:18px;line-height:1}
+.leg{font-size:12px;color:var(--sub);margin:0 0 4px 30px}
+.summary{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14px;line-height:1.6}
+.summary small{color:var(--sub)}
+button.add{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer}
+button.add.on{background:var(--ink);color:var(--bg)}
+#map{height:100%}
+.item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.item:hover{border-color:var(--ink)}
+.item .n{font-weight:600}
+.item .m{font-size:13px;color:var(--sub);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{color:#fff;border-radius:4px;padding:1px 6px;font-size:12px}
+.tag.museum{background:var(--museum)}.tag.art{background:var(--art)}.tag.heritage{background:var(--heritage)}
+.detail{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:13px;line-height:1.5}
+.detail img{width:100%;max-height:180px;object-fit:cover;border-radius:6px;margin-bottom:6px}
+.detail p{margin:6px 0}
+.item a{color:var(--art);text-decoration:none}
+@media (max-width:760px){
+  body{height:100dvh}
+  header{padding:8px 12px}
+  h1{font-size:16px;margin-bottom:6px}
+  .controls{gap:6px}
+  .controls .loc{padding:8px 10px}
+  #addrForm{order:5;flex:1 1 100%;max-width:none}
+  #addr{font-size:16px;padding:8px 10px} /* iOS 자동 확대 방지 */
+  select{padding:7px}
+  .rows{position:relative;gap:6px;margin-top:6px}
+  .grp{position:static}
+  .chip{padding:7px 12px}
+  .kinds{left:0;right:0;min-width:0;top:100%;margin-top:4px;display:none;flex-flow:row wrap;gap:10px 16px;max-height:45vh}
+  .kinds.open{display:flex}
+  .kinds label{font-size:15px;padding:4px 0}
+  .kinds input{width:18px;height:18px;vertical-align:-3px}
+  #status{font-size:12px}
+  main{grid-template-columns:1fr;grid-template-rows:minmax(220px,45%) 1fr}
+  #map{order:-1}
+  #side{border-right:0;border-top:1px solid var(--line)}
+  #list,#routePanel{padding:8px}
+  .item{padding:12px}
+  .item .m a{padding:2px 0}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛️ 내 주변 박물관·미술관·문화재</h1>
+  <div class="controls">
+    <button class="loc" id="locate">📍 내 위치로</button>
+    <form id="addrForm" style="display:flex;gap:4px;flex:1;min-width:220px;max-width:420px">
+      <input id="addr" placeholder="주소·장소 입력 (예: 부산시청, 37.57,126.98)" style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-size:14px">
+      <button class="loc" type="submit">검색</button>
+    </form>
+    <select id="radius">
+      <option value="1000">1km</option>
+      <option value="3000" selected>3km</option>
+      <option value="5000">5km</option>
+      <option value="10000">10km</option>
+    </select>
+  </div>
+  <div class="rows">
+    <div class="grp"><button class="chip on" data-t="heritage">문화재</button><button class="dd" data-for="heritage" aria-expanded="false" aria-label="문화재 유형 선택">▾</button><div class="kinds" id="kinds-heritage"><span class="hint">불러오는 중…</span></div></div>
+    <div class="grp"><button class="chip on" data-t="museum">박물관</button><button class="dd" data-for="museum" aria-expanded="false" aria-label="박물관 유형 선택">▾</button><div class="kinds" id="kinds-museum"><span class="hint">불러오는 중…</span></div></div>
+    <div class="grp"><button class="chip on" data-t="art">미술관</button><button class="dd" data-for="art" aria-expanded="false" aria-label="미술관 유형 선택">▾</button><div class="kinds" id="kinds-art"><span class="hint">불러오는 중…</span></div></div>
+  </div>
+  <div id="status">위치를 확인하는 중…  (지도를 클릭하면 그 지점 주변을 검색합니다)</div>
+</header>
+<main>
+  <div id="side">
+    <div class="tabs"><button class="on" data-tab="explore">탐색</button><button data-tab="route">🧭 최적 동선 <span id="rcount">0</span></button></div>
+    <div id="list"></div>
+    <div id="routePanel" hidden>
+      <div class="opts">
+        <label><input type="checkbox" id="rLoop"> 출발지로 돌아오기</label>
+        <select id="rMode"><option value="walk">도보</option><option value="car">차량</option></select>
+        <label>관람 <input id="rVisit" type="number" min="0" max="240" value="40"> 분/곳</label>
+      </div>
+      <div class="opts"><button class="loc" id="rCalc">최적 동선 계산</button><button class="chip" id="rClear">비우기</button></div>
+      <div id="routeBody"></div>
+    </div>
+  </div>
+  <div id="map"></div>
+</main>
+
+<script>
+const LABEL={museum:'박물관',art:'미술관',heritage:'문화재'};
+const COLOR={museum:'#c0392b',art:'#2e6fd8',heritage:'#b8860b'};
+let reqId=0,loading=false;
+const DEFAULT=[37.5665,126.9780]; // 서울시청
+let center=DEFAULT, places=[], active={museum:true,art:true,heritage:true};
+
+// 네이버 클라우드 플랫폼 > Maps > Application 의 Client ID(ncpKeyId)
+const NAVER_KEY=(()=>{try{return localStorage.getItem('naver_key')||''}catch(e){return ''}})()||'';
+let map, markers=[], iw=null, me=null, circle=null;
+const LL=(a,b)=>new naver.maps.LatLng(a,b);
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const setStatus=t=>$('status').textContent=t;
+
+function dist(a,b,c,d){const R=6371e3,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r;
+ const h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+const fmt=m=>m<1000?Math.round(m)+'m':(m/1000).toFixed(1)+'km';
+
+// 국가유산청 Open API: 전국 지정·등록 국가유산(좌표 포함) 한 번에 받아 7일간 브라우저에 캐시
+let heritageCache=null;
+async function loadHeritage(){
+  if(heritageCache)return heritageCache;
+  try{
+    const c=JSON.parse(localStorage.getItem('heritage_v2')||'null');
+    if(c&&Date.now()-c.t<7*864e5){return heritageCache=c.d;}
+  }catch(e){}
+  setStatus('국가유산청 데이터를 내려받는 중… (처음 한 번만, 약 10MB)');
+  const res=await fetch('https://www.khs.go.kr/cha/SearchKindOpenapiList.do?pageUnit=30000&pageIndex=1');
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const xml=new DOMParser().parseFromString(await res.text(),'text/xml');
+  const g=(n,t)=>(n.getElementsByTagName(t)[0]?.textContent||'').trim();
+  const out=[];
+  for(const it of xml.getElementsByTagName('item')){
+    if(g(it,'ccbaCncl')==='Y')continue; // 지정 해제
+    const la=parseFloat(g(it,'latitude')),lo=parseFloat(g(it,'longitude'));
+    if(!(la>30&&la<40&&lo>120&&lo<135))continue;
+    out.push([g(it,'ccbaMnm1'),la,lo,g(it,'ccmaName'),(g(it,'ccbaCtcdNm')+' '+g(it,'ccsiName')).trim(),g(it,'ccbaKdcd'),g(it,'ccbaAsno'),g(it,'ccbaCtcd')]);
+  }
+  heritageCache=out;
+  try{localStorage.setItem('heritage_v2',JSON.stringify({t:Date.now(),d:out}));}catch(e){}
+  return out;
+}
+
+// 국가유산청 상세 조회 API: 사진·소재지·시대·설명
+async function showDetail(p,el){
+  let box=el.querySelector('.detail');
+  if(box){box.hidden=!box.hidden;return;}
+  box=document.createElement('div');box.className='detail';box.textContent='상세 정보를 불러오는 중…';el.appendChild(box);
+  try{
+    const u=`https://www.khs.go.kr/cha/SearchKindOpenapiDt.do?ccbaKdcd=${p.cha.k}&ccbaAsno=${p.cha.a}&ccbaCtcd=${p.cha.c}`;
+    const xml=new DOMParser().parseFromString(await (await fetch(u)).text(),'text/xml');
+    const g=t=>(xml.getElementsByTagName(t)[0]?.textContent||'').trim();
+    const img=g('imageUrl').replace(/^http:/,'https:');
+    const txt=g('content');
+    box.innerHTML=(img?`<img src="${esc(img)}" alt="" loading="lazy">`:'')+
+      `<div class="kv">${[['소재지',g('ccbaLcad')],['시대',g('ccceName')],['지정일',g('ccbaAsdt').replace(/(\d{4})(\d\d)(\d\d)/,'$1-$2-$3')],['관리',g('ccbaAdmin')]]
+        .filter(x=>x[1]).map(x=>`<b>${x[0]}</b> ${esc(x[1])}`).join('<br>')}</div>`+
+      (txt?`<p>${esc(txt.length>350?txt.slice(0,350)+'…':txt)}</p>`:'')+
+      `<a href="https://www.khs.go.kr/" target="_blank" rel="noopener">국가유산청</a>`;
+  }catch(e){box.textContent='상세 정보를 불러오지 못했습니다.';}
+}
+
+let museumCache=null,kindsBuilt=false;
+const off={museum:new Set(),art:new Set(),heritage:new Set()}; // 체크 해제된 유형
+function buildKinds(type,kinds){ // kinds: [[유형명,개수],...]
+  const box=$('kinds-'+type);box.innerHTML='';
+  const ORDER=['국립','공립','사립','대학'],rank=k=>{const i=ORDER.indexOf(k);return i<0?ORDER.length:i;};
+  // 문화재 순서: 명승 → 국보 → 보물 → 국가~ → 시도~ → 사적 → 그 외(개수순) → 천연기념물
+  const hr=k=>k==='명승'?0:k==='국보'?1:k==='보물'?2:k.startsWith('국가')?3:k.startsWith('시도')?4:k==='사적'?5:k==='천연기념물'?7:6;
+  kinds.sort(type==='heritage'?(a,b)=>hr(a[0])-hr(b[0])||b[1]-a[1]:(a,b)=>rank(a[0])-rank(b[0])||b[1]-a[1]).forEach(([k,n])=>{
+    const l=document.createElement('label');
+    l.innerHTML=`<input type="checkbox" checked> ${esc(k)} <small style="color:var(--sub)">${n}</small>`;
+    l.firstChild.onchange=e=>{e.target.checked?off[type].delete(k):off[type].add(k);render();};
+    box.appendChild(l);
+  });
+}
+function countKinds(arr,typeOf,kindOf){const c={};arr.forEach(x=>{const t=typeOf(x),k=kindOf(x);((c[t]??={})[k]=(c[t][k]||0)+1);});return c;}
+async function loadMuseums(){ // 전국박물관미술관정보표준데이터.json → convert_standard.py → museums.json
+  if(museumCache)return museumCache;
+  const res=await fetch('museums.json');
+  if(!res.ok)throw new Error('museums.json HTTP '+res.status);
+  museumCache=await res.json();
+  return museumCache;
+}
+
+async function search(){
+  const r=+$('radius').value,[lat,lon]=center;
+  const my=++reqId;
+  places=[];loading=true;render();
+  setStatus('주변 장소를 검색하는 중…');
+  const [mu,he]=await Promise.allSettled([loadMuseums(),loadHeritage()]);
+  if(my!==reqId)return;
+  const errs=[];
+  if(!kindsBuilt&&mu.status==='fulfilled'&&he.status==='fulfilled'){kindsBuilt=true;
+    const mk=countKinds(mu.value,m=>m[3],m=>m[6]);
+    ['museum','art'].forEach(t=>buildKinds(t,Object.entries(mk[t]||{})));
+    buildKinds('heritage',Object.entries(countKinds(he.value,()=>'h',h=>h[3]).h||{}));}
+  if(mu.status==='fulfilled')mu.value.forEach(m=>{const d=dist(lat,lon,m[1],m[2]);
+    if(d<=r)places.push({name:m[0],lat:m[1],lon:m[2],type:m[3],kind:m[6],d,web:m[8],addr:m[4],tel:m[5],oper:m[7],info:m[9]});});
+  else errs.push('박물관·미술관('+mu.reason.message+')');
+  if(he.status==='fulfilled')he.value.forEach(h=>{const d=dist(lat,lon,h[1],h[2]);
+    if(d<=r)places.push({name:h[0],lat:h[1],lon:h[2],type:'heritage',kind:h[3],d,web:'',addr:h[4],cha:{k:h[5],a:h[6],c:h[7]}});});
+  else errs.push('문화재('+he.reason.message+')');
+  places.sort((x,y)=>x.d-y.d);
+  loading=false;
+  render(errs.length?'불러오지 못함: '+errs.join(', '):'');
+}
+
+// ===== 최적 동선 =====
+let tab='explore', route=[], routeResult=null, routeOverlays=[];
+try{route=JSON.parse(localStorage.getItem('route_v1')||'[]')}catch(e){}
+const SPEED={walk:4.5,car:25}, DETOUR=1.3; // km/h, 직선거리→실제 도로 보정 계수
+const rkey=p=>p.name+'@'+p.lat.toFixed(5)+','+p.lon.toFixed(5);
+const inRoute=p=>route.some(r=>r.key===rkey(p));
+function saveRoute(){try{localStorage.setItem('route_v1',JSON.stringify(route))}catch(e){}$('rcount').textContent=route.length;}
+function toggleRoute(p){
+  const i=route.findIndex(r=>r.key===rkey(p));
+  if(i>=0)route.splice(i,1);
+  else{if(route.length>=12){setStatus('동선에는 최대 12곳까지 담을 수 있어요.');return false;}
+    route.push({key:rkey(p),name:p.name,lat:p.lat,lon:p.lon,type:p.type,kind:p.kind});}
+  routeResult=null;saveRoute();renderRoute();drawRoute();return true;
+}
+// Held-Karp(정확한 최단 경로): 12곳 이하라 즉시 계산된다
+function solveRoute(start,stops,loop){
+  const n=stops.length,pts=[start,...stops];
+  const d=pts.map(a=>pts.map(b=>dist(a.lat,a.lon,b.lat,b.lon)*DETOUR));
+  const N=1<<n,INF=1e18;
+  const dp=Array.from({length:N},()=>new Float64Array(n).fill(INF)),par=Array.from({length:N},()=>new Int8Array(n).fill(-1));
+  for(let j=0;j<n;j++)dp[1<<j][j]=d[0][j+1];
+  for(let m=1;m<N;m++)for(let j=0;j<n;j++){
+    if(!(m&(1<<j))||dp[m][j]>=INF)continue;
+    for(let k=0;k<n;k++){if(m&(1<<k))continue;
+      const nm=m|(1<<k),c=dp[m][j]+d[j+1][k+1];
+      if(c<dp[nm][k]){dp[nm][k]=c;par[nm][k]=j;}}}
+  let best=INF,bj=0;
+  for(let j=0;j<n;j++){const c=dp[N-1][j]+(loop?d[j+1][0]:0);if(c<best){best=c;bj=j;}}
+  const order=[];let m=N-1,j=bj;
+  while(j>=0){order.push(j);const pj=par[m][j];m^=1<<j;j=pj;}
+  return order.reverse().map(i=>stops[i]);
+}
+function calcRoute(){
+  if(!route.length){renderRoute();return;}
+  const start={lat:center[0],lon:center[1]},loop=$('rLoop').checked;
+  routeResult={start,loop,order:solveRoute(start,route,loop)};
+  renderRoute();drawRoute();
+}
+const mins=m=>m<60?Math.round(m)+'분':Math.floor(m/60)+'시간 '+Math.round(m%60)+'분';
+function renderRoute(){
+  const box=$('routeBody');box.innerHTML='';
+  if(!route.length){box.innerHTML='<p style="color:var(--sub);font-size:13px;line-height:1.6">탐색 탭에서 항목의 <b>＋ 동선</b>을 눌러 가고 싶은 곳을 담으세요. (최대 12곳)<br>출발지는 현재 기준 위치(내 위치·검색한 주소·지도 클릭 지점)입니다.</p>';return;}
+  const rm=k=>{route=route.filter(r=>r.key!==k);routeResult=null;saveRoute();renderRoute();drawRoute();render();};
+  const row=(p,no)=>{const e=document.createElement('div');e.className='stop';
+    e.innerHTML=`<span class="no">${no}</span><div><div class="nm">${esc(p.name)}</div><div class="m" style="font-size:12px;color:var(--sub)"><span class="tag ${p.type}">${esc(p.kind||LABEL[p.type])}</span> <a href="https://map.naver.com/p/search/${encodeURIComponent(p.name)}" target="_blank" rel="noopener" style="color:var(--art);text-decoration:none">네이버지도</a></div></div><button class="x" title="빼기">×</button>`;
+    e.querySelector('.x').onclick=()=>rm(p.key);
+    e.querySelector('.nm').onclick=()=>{map.setCenter(LL(p.lat,p.lon));map.setZoom(16);};
+    return e;};
+  if(!routeResult){
+    box.insertAdjacentHTML('beforeend','<p style="font-size:13px;color:var(--sub)">담은 곳을 <b>최적 동선 계산</b>으로 가장 짧은 순서로 정렬합니다.</p>');
+    route.forEach(p=>box.appendChild(row(p,'·')));return;
+  }
+  const {start,loop,order}=routeResult,mode=$('rMode').value,visit=+$('rVisit').value||0;
+  const path=[start,...order,...(loop?[start]:[])];
+  const legs=path.slice(1).map((b,i)=>dist(path[i].lat,path[i].lon,b.lat,b.lon)*DETOUR);
+  const total=legs.reduce((a,b)=>a+b,0),travel=total/1000/SPEED[mode]*60,stay=visit*order.length;
+  box.insertAdjacentHTML('beforeend',`<div class="summary"><b>총 ${fmt(total)}</b> · 이동 ${mins(travel)}${stay?` + 관람 ${mins(stay)}`:''}<br><b>예상 소요 ${mins(travel+stay)}</b><br><small>직선거리×${DETOUR} 보정 추정치이며 실제 길찾기 결과와 다를 수 있어요.</small></div>`);
+  box.insertAdjacentHTML('beforeend','<div class="stop"><span class="no">출</span><div class="nm" style="cursor:default">출발 (기준 위치)</div></div>');
+  const lg=(m,txt)=>box.insertAdjacentHTML('beforeend',`<div class="leg">↓ ${fmt(m)} · ${mode==='walk'?'도보':'차량'} ${mins(m/1000/SPEED[mode]*60)}${txt||''}</div>`);
+  order.forEach((p,i)=>{lg(legs[i]);box.appendChild(row(p,i+1));});
+  if(loop){lg(legs[legs.length-1],' (복귀)');box.insertAdjacentHTML('beforeend','<div class="stop"><span class="no">도</span><div class="nm" style="cursor:default">출발지 도착</div></div>');}
+}
+function drawRoute(){
+  routeOverlays.forEach(o=>o.setMap(null));routeOverlays=[];
+  if(tab!=='route'||!route.length||!map)return;
+  const bounds=new naver.maps.LatLngBounds();
+  const pts=routeResult?[routeResult.start,...routeResult.order,...(routeResult.loop?[routeResult.start]:[])]:null;
+  if(pts)routeOverlays.push(new naver.maps.Polyline({map,path:pts.map(p=>LL(p.lat,p.lon)),strokeColor:'#1a73e8',strokeWeight:5,strokeOpacity:.85}));
+  (routeResult?routeResult.order:route).forEach((p,i)=>{
+    routeOverlays.push(new naver.maps.Marker({map,position:LL(p.lat,p.lon),title:p.name,zIndex:200,
+      icon:{content:`<div style="width:26px;height:26px;border-radius:50%;background:${routeResult?'#1a73e8':COLOR[p.type]};color:#fff;border:2px solid #fff;box-shadow:0 1px 4px #0008;text-align:center;font:700 13px/22px system-ui">${routeResult?i+1:'·'}</div>`,anchor:new naver.maps.Point(13,13)}}));
+    bounds.extend(LL(p.lat,p.lon));});
+  bounds.extend(LL(center[0],center[1]));
+  map.fitBounds(bounds,{top:40,right:40,bottom:40,left:40});
+}
+function switchTab(t){
+  tab=t;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('list').hidden=t!=='explore';$('routePanel').hidden=t!=='route';
+  if(map){render();drawRoute();}
+  if(t==='route')renderRoute();
+}
+
+function render(note){
+  markers.forEach(m=>m.setMap(null));markers=[];if(iw)iw.close();
+  const shown=places.filter(p=>active[p.type]&&!off[p.type].has(p.kind));
+  $('list').innerHTML=shown.length?'':`<p style="color:var(--sub);padding:8px">${loading?'⏳ 불러오는 중…':'검색 결과가 없습니다. 반경을 넓혀 보세요.'}</p>`;
+  shown.forEach(p=>{
+    const m=new naver.maps.Marker({position:LL(p.lat,p.lon),map:tab==='route'?null:map,title:p.name,
+      icon:{content:`<div style="width:16px;height:16px;border-radius:50%;background:${COLOR[p.type]};border:2px solid #fff;box-shadow:0 0 3px #0007"></div>`,anchor:new naver.maps.Point(8,8)}});
+    const open=()=>{if(!iw)iw=new naver.maps.InfoWindow({borderWidth:1,anchorSize:new naver.maps.Size(10,8)});
+      iw.setContent(`<div style="padding:8px 10px;font-size:13px;color:#222"><b>${esc(p.name)}</b><br>${LABEL[p.type]} · ${fmt(p.d)}</div>`);iw.open(map,m);};
+    naver.maps.Event.addListener(m,'click',open);
+    markers.push(m);
+    const el=document.createElement('div');el.className='item';
+    const nav=`https://map.naver.com/p/search/${encodeURIComponent(p.name)}`;
+    el.innerHTML=`<div class="n">${esc(p.name)}</div><div class="m"><span class="tag ${p.type}">${esc(p.kind||LABEL[p.type])}</span><span>${fmt(p.d)}</span>
+      <a href="${nav}" target="_blank" rel="noopener">네이버지도</a>${/^https?:\/\//i.test(p.web||'')?`<a href="${esc(p.web)}" target="_blank" rel="noopener">홈페이지</a>`:''}</div>${p.addr?`<div class="m">${esc(p.addr)}</div>`:''}${p.info?`<div class="m">🕘 ${esc(p.info)}</div>`:''}${p.tel||p.oper?`<div class="m">${[p.oper,p.tel].filter(Boolean).map(esc).join(' · ')}</div>`:''}`;
+    el.onclick=e=>{if(e.target.tagName==='A')return;map.setCenter(LL(p.lat,p.lon));map.setZoom(17);open();if(p.cha)showDetail(p,el);};
+    const ab=document.createElement('button'),sync=()=>{const on=inRoute(p);ab.className='add'+(on?' on':'');ab.textContent=on?'✔ 동선':'＋ 동선';};
+    sync();ab.onclick=e=>{e.stopPropagation();if(toggleRoute(p)!==false)sync();};
+    el.querySelector('.m').appendChild(ab);
+    $('list').appendChild(el);
+  });
+  const c={museum:0,art:0,heritage:0};shown.forEach(p=>c[p.type]++);
+  setStatus(`총 ${shown.length}곳 (박물관 ${c.museum} · 미술관 ${c.art} · 문화재 ${c.heritage})`+(note?` — ${note}`:''));
+}
+
+function setCenter(lat,lon,fit){
+  center=[lat,lon];
+  if(me)me.setMap(null);if(circle)circle.setMap(null);
+  me=new naver.maps.Marker({position:LL(lat,lon),map,title:'검색 기준 위치',zIndex:100,
+    icon:{content:'<div style="width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 5px #0009"></div>',anchor:new naver.maps.Point(9,9)}});
+  circle=new naver.maps.Circle({map,center:LL(lat,lon),radius:+$('radius').value,strokeColor:'#1a73e8',strokeWeight:1,strokeOpacity:.6,fillColor:'#1a73e8',fillOpacity:.05});
+  if(fit)map.fitBounds(circle.getBounds());
+  search();
+}
+
+// 위치 직접 입력: 위도,경도 → 네이버 주소 검색 → (실패 시) OpenStreetMap Nominatim
+async function geocode(q){
+  const m=q.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+  if(m){let a=+m[1],b=+m[2];if(a>90||a<-90||(b>=33&&b<=39&&a>=124))[a,b]=[b,a]; // 경도,위도 순서로 입력해도 허용
+    return {lat:a,lon:b,label:`좌표 ${a}, ${b}`};}
+  if(naver.maps.Service?.geocode){
+    const r=await new Promise(res=>naver.maps.Service.geocode({query:q},(st,rs)=>{
+      const a=st===naver.maps.Service.Status.OK&&rs.v2?.addresses?.[0];res(a||null);}));
+    if(r)return {lat:+r.y,lon:+r.x,label:r.roadAddress||r.jibunAddress||q};
+  }
+  const res=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(q));
+  const j=await res.json();
+  if(j[0])return {lat:+j[0].lat,lon:+j[0].lon,label:j[0].display_name};
+  return null;
+}
+$('addrForm').onsubmit=async e=>{
+  e.preventDefault();const q=$('addr').value.trim();if(!q||!map)return;
+  setStatus('위치를 찾는 중…');
+  try{const g=await geocode(q);
+    if(!g){setStatus(`"${q}" 위치를 찾지 못했습니다. 더 구체적인 주소나 "위도,경도"로 입력해 보세요.`);return;}
+    setCenter(g.lat,g.lon,true);
+  }catch(err){setStatus('위치 검색에 실패했습니다: '+err.message);}
+};
+
+function locate(){
+  if(!navigator.geolocation){setStatus('이 브라우저는 위치 기능을 지원하지 않습니다. 서울시청 기준으로 표시합니다.');setCenter(...DEFAULT,true);return;}
+  setStatus('위치를 확인하는 중…');
+  navigator.geolocation.getCurrentPosition(
+    p=>setCenter(p.coords.latitude,p.coords.longitude,true),
+    ()=>{setStatus('위치 권한이 없어 서울시청 기준으로 표시합니다. 지도를 클릭해 기준점을 바꿀 수 있어요.');setCenter(...DEFAULT,true);},
+    {enableHighAccuracy:true,timeout:10000});
+}
+
+$('locate').onclick=locate;
+$('radius').onchange=()=>setCenter(...center,true);
+document.querySelectorAll('.dd').forEach(b=>b.onclick=e=>{e.stopPropagation();
+  const box=$('kinds-'+b.dataset.for),open=!box.classList.contains('open');
+  document.querySelectorAll('.kinds').forEach(k=>k.classList.remove('open'));
+  document.querySelectorAll('.dd').forEach(d=>d.setAttribute('aria-expanded','false'));
+  if(open){box.classList.add('open');b.setAttribute('aria-expanded','true');}});
+document.addEventListener('click',e=>{if(e.target.closest('.kinds'))return;
+  document.querySelectorAll('.kinds').forEach(k=>k.classList.remove('open'));
+  document.querySelectorAll('.dd').forEach(d=>d.setAttribute('aria-expanded','false'));});
+document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+  active[b.dataset.t]=!active[b.dataset.t];b.classList.toggle('on');render();});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+$('rCalc').onclick=calcRoute;
+$('rClear').onclick=()=>{route=[];routeResult=null;saveRoute();renderRoute();drawRoute();render();};
+['rLoop','rMode','rVisit'].forEach(id=>$(id).onchange=()=>{if(routeResult)calcRoute();else renderRoute();});
+saveRoute();
+function boot(){
+  map=new naver.maps.Map('map',{center:LL(...DEFAULT),zoom:14,zoomControl:true});
+  naver.maps.Event.addListener(map,'click',e=>setCenter(e.coord.lat(),e.coord.lng(),false));
+  locate();
+}
+function needKey(msg){
+  $('map').innerHTML=`<div style="padding:24px;max-width:420px;line-height:1.6">
+    <b>네이버 지도 Client ID가 필요합니다</b><p style="color:var(--sub);font-size:14px">${msg}<br>
+    ① <a href="https://console.ncloud.com" target="_blank">네이버 클라우드 플랫폼</a> → AIㆍNAVER API → Application 등록<br>
+    ② <b>Dynamic Map</b> 선택, 웹 서비스 URL에 <code>http://localhost:8000</code> 등록<br>
+    ③ 발급된 Client ID를 아래에 입력</p>
+    <input id="k" placeholder="Client ID" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)">
+    <button class="loc" style="margin-top:8px" onclick="try{localStorage.setItem('naver_key',$('k').value.trim())}catch(e){};location.reload()">저장</button></div>`;
+}
+window.navermap_authFailure=()=>needKey('인증에 실패했습니다. Client ID와 등록한 웹 서비스 URL(접속 주소)을 확인하세요.');
+if(!NAVER_KEY)needKey('Client ID가 설정되지 않았습니다.');
+else{const s=document.createElement('script');
+  s.src='https://oapi.map.naver.com/openapi/v3/maps.js?submodules=geocoder&ncpKeyId='+encodeURIComponent(NAVER_KEY);
+  s.onload=boot;s.onerror=()=>needKey('네이버 지도 스크립트를 불러오지 못했습니다.');document.head.appendChild(s);}
+</script>
+</body>
+</html>
