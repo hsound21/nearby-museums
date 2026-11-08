@@ -132,7 +132,8 @@ const DEFAULT=[37.5665,126.9780]; // 서울시청
 let center=DEFAULT, places=[], active={museum:true,art:true,heritage:true};
 
 // 네이버 클라우드 플랫폼 > Maps > Application 의 Client ID(ncpKeyId)
-const NAVER_KEY=(()=>{try{return localStorage.getItem('naver_key')||''}catch(e){return ''}})()||'';
+const NAVER_KEY_DEFAULT='akwsi8tcsu'; // 여기에 Client ID를 넣으면 입력창 없이 바로 지도가 뜬다 (공개 식별자, 웹 서비스 URL로 보호됨)
+const NAVER_KEY=(()=>{try{return localStorage.getItem('naver_key')||''}catch(e){return ''}})()||NAVER_KEY_DEFAULT;
 let map, markers=[], iw=null, me=null, circle=null;
 const LL=(a,b)=>new naver.maps.LatLng(a,b);
 
