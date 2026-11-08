@@ -5,6 +5,7 @@
 ## 데이터
 - 박물관·미술관: 전국박물관미술관정보표준데이터 (`museums.json`, 원본은 `전국박물관미술관정보표준데이터.json`)
 - 문화재: 국가유산청 Open API (키 불필요)
+- 축제: 공공데이터포털 전국문화축제표준데이터 (`festivals.json`). 갱신: `DATA_GO_KR_KEY=인증키 python fetch_festivals.py` (인증키는 코드에 넣지 않고 환경변수로 전달)
 
 데이터를 갱신하려면 새 원본 JSON을 넣고 `python convert_standard.py`를 실행합니다.
 

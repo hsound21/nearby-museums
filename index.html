@@ -6,7 +6,7 @@
 <title>내 주변 박물관·미술관</title>
 <style>
 :root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#777;--line:#e4e0d6;
---museum:#c0392b;--art:#2e6fd8;--heritage:#b8860b;}
+--museum:#c0392b;--art:#2e6fd8;--heritage:#b8860b;--festival:#8e44ad;}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1b1d;--card:#262629;--ink:#eee;--sub:#9a9a9f;--line:#38383c;}}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
@@ -27,6 +27,7 @@ h1{font-size:18px;margin:0 0 8px}
 .chip[data-t=museum].on{background:var(--museum)}
 .chip[data-t=art].on{background:var(--art)}
 .chip[data-t=heritage].on{background:var(--heritage)}
+.chip[data-t=festival].on{background:var(--festival)}
 button.loc{border:0;background:var(--ink);color:var(--bg);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:14px}
 select{padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 #status{font-size:13px;color:var(--sub);margin-top:6px}
@@ -53,7 +54,7 @@ button.add.on{background:var(--ink);color:var(--bg)}
 .item .n{font-weight:600}
 .item .m{font-size:13px;color:var(--sub);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .tag{color:#fff;border-radius:4px;padding:1px 6px;font-size:12px}
-.tag.museum{background:var(--museum)}.tag.art{background:var(--art)}.tag.heritage{background:var(--heritage)}
+.tag.museum{background:var(--museum)}.tag.art{background:var(--art)}.tag.heritage{background:var(--heritage)}.tag.festival{background:var(--festival)}
 .detail{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:13px;line-height:1.5}
 .detail img{width:100%;max-height:180px;object-fit:cover;border-radius:6px;margin-bottom:6px}
 .detail p{margin:6px 0}
@@ -104,6 +105,7 @@ button.add.on{background:var(--ink);color:var(--bg)}
     <div class="grp"><button class="chip on" data-t="heritage">문화재</button><button class="dd" data-for="heritage" aria-expanded="false" aria-label="문화재 유형 선택">▾</button><div class="kinds" id="kinds-heritage"><span class="hint">불러오는 중…</span></div></div>
     <div class="grp"><button class="chip on" data-t="museum">박물관</button><button class="dd" data-for="museum" aria-expanded="false" aria-label="박물관 유형 선택">▾</button><div class="kinds" id="kinds-museum"><span class="hint">불러오는 중…</span></div></div>
     <div class="grp"><button class="chip on" data-t="art">미술관</button><button class="dd" data-for="art" aria-expanded="false" aria-label="미술관 유형 선택">▾</button><div class="kinds" id="kinds-art"><span class="hint">불러오는 중…</span></div></div>
+    <div class="grp"><button class="chip on" data-t="festival">축제</button><button class="dd" data-for="festival" aria-expanded="false" aria-label="축제 유형 선택">▾</button><div class="kinds" id="kinds-festival"><span class="hint">불러오는 중…</span></div></div>
   </div>
   <div id="status">위치를 확인하는 중…  (지도를 클릭하면 그 지점 주변을 검색합니다)</div>
 </header>
@@ -125,11 +127,11 @@ button.add.on{background:var(--ink);color:var(--bg)}
 </main>
 
 <script>
-const LABEL={museum:'박물관',art:'미술관',heritage:'문화재'};
-const COLOR={museum:'#c0392b',art:'#2e6fd8',heritage:'#b8860b'};
+const LABEL={museum:'박물관',art:'미술관',heritage:'문화재',festival:'축제'};
+const COLOR={museum:'#c0392b',art:'#2e6fd8',heritage:'#b8860b',festival:'#8e44ad'};
 let reqId=0,loading=false;
 const DEFAULT=[37.5665,126.9780]; // 서울시청
-let center=DEFAULT, places=[], active={museum:true,art:true,heritage:true};
+let center=DEFAULT, places=[], active={museum:true,art:true,heritage:true,festival:true};
 
 // 네이버 클라우드 플랫폼 > Maps > Application 의 Client ID(ncpKeyId)
 const NAVER_KEY_DEFAULT='akwsi8tcsu'; // 여기에 Client ID를 넣으면 입력창 없이 바로 지도가 뜬다 (공개 식별자, 웹 서비스 URL로 보호됨)
@@ -189,21 +191,31 @@ async function showDetail(p,el){
   }catch(e){box.textContent='상세 정보를 불러오지 못했습니다.';}
 }
 
-let museumCache=null,kindsBuilt=false;
-const off={museum:new Set(),art:new Set(),heritage:new Set()}; // 체크 해제된 유형
+let museumCache=null,kindsBuilt=false,festBuilt=false;
+const off={museum:new Set(),art:new Set(),heritage:new Set(),festival:new Set(['종료'])}; // 체크 해제된 유형
 function buildKinds(type,kinds){ // kinds: [[유형명,개수],...]
   const box=$('kinds-'+type);box.innerHTML='';
-  const ORDER=['국립','공립','사립','대학'],rank=k=>{const i=ORDER.indexOf(k);return i<0?ORDER.length:i;};
+  const ORDER=['국립','공립','사립','대학','진행 중','개최 예정','종료'],rank=k=>{const i=ORDER.indexOf(k);return i<0?ORDER.length:i;};
   // 문화재 순서: 명승 → 국보 → 보물 → 국가~ → 시도~ → 사적 → 그 외(개수순) → 천연기념물
   const hr=k=>k==='명승'?0:k==='국보'?1:k==='보물'?2:k.startsWith('국가')?3:k.startsWith('시도')?4:k==='사적'?5:k==='천연기념물'?7:6;
   kinds.sort(type==='heritage'?(a,b)=>hr(a[0])-hr(b[0])||b[1]-a[1]:(a,b)=>rank(a[0])-rank(b[0])||b[1]-a[1]).forEach(([k,n])=>{
     const l=document.createElement('label');
-    l.innerHTML=`<input type="checkbox" checked> ${esc(k)} <small style="color:var(--sub)">${n}</small>`;
+    l.innerHTML=`<input type="checkbox" ${off[type].has(k)?'':'checked'}> ${esc(k)} <small style="color:var(--sub)">${n}</small>`;
     l.firstChild.onchange=e=>{e.target.checked?off[type].delete(k):off[type].add(k);render();};
     box.appendChild(l);
   });
 }
 function countKinds(arr,typeOf,kindOf){const c={};arr.forEach(x=>{const t=typeOf(x),k=kindOf(x);((c[t]??={})[k]=(c[t][k]||0)+1);});return c;}
+// 공공데이터포털 전국문화축제표준데이터 → fetch_festivals.py → festivals.json
+let festCache=null;
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const festKind=(s,e)=>{const t=todayStr();return s<=t&&t<=e?'진행 중':s>t?'개최 예정':'종료';};
+async function loadFestivals(){
+  if(festCache)return festCache;
+  const res=await fetch('festivals.json');
+  if(!res.ok)throw new Error('festivals.json HTTP '+res.status);
+  return festCache=await res.json();
+}
 async function loadMuseums(){ // 전국박물관미술관정보표준데이터.json → convert_standard.py → museums.json
   if(museumCache)return museumCache;
   const res=await fetch('museums.json');
@@ -217,13 +229,19 @@ async function search(){
   const my=++reqId;
   places=[];loading=true;render();
   setStatus('주변 장소를 검색하는 중…');
-  const [mu,he]=await Promise.allSettled([loadMuseums(),loadHeritage()]);
+  const [mu,he,fe]=await Promise.allSettled([loadMuseums(),loadHeritage(),loadFestivals()]);
   if(my!==reqId)return;
   const errs=[];
   if(!kindsBuilt&&mu.status==='fulfilled'&&he.status==='fulfilled'){kindsBuilt=true;
     const mk=countKinds(mu.value,m=>m[3],m=>m[6]);
     ['museum','art'].forEach(t=>buildKinds(t,Object.entries(mk[t]||{})));
     buildKinds('heritage',Object.entries(countKinds(he.value,()=>'h',h=>h[3]).h||{}));}
+  if(fe.status==='fulfilled'){
+    if(!festBuilt){festBuilt=true;const c={};fe.value.forEach(f=>{const k=festKind(f[3],f[4]);c[k]=(c[k]||0)+1;});buildKinds('festival',Object.entries(c));}
+    fe.value.forEach(f=>{const d=dist(lat,lon,f[1],f[2]);
+      if(d<=r)places.push({name:f[0],lat:f[1],lon:f[2],type:'festival',kind:festKind(f[3],f[4]),d,web:f[8],addr:f[6],tel:f[7],oper:f[10],
+        info:f[3]+' ~ '+f[4]+(f[5]?' · '+f[5]:''),desc:f[9]});});
+  }else errs.push('축제('+fe.reason.message+')');
   if(mu.status==='fulfilled')mu.value.forEach(m=>{const d=dist(lat,lon,m[1],m[2]);
     if(d<=r)places.push({name:m[0],lat:m[1],lon:m[2],type:m[3],kind:m[6],d,web:m[8],addr:m[4],tel:m[5],oper:m[7],info:m[9]});});
   else errs.push('박물관·미술관('+mu.reason.message+')');
@@ -332,15 +350,15 @@ function render(note){
     const el=document.createElement('div');el.className='item';
     const nav=`https://map.naver.com/p/search/${encodeURIComponent(p.name)}`;
     el.innerHTML=`<div class="n">${esc(p.name)}</div><div class="m"><span class="tag ${p.type}">${esc(p.kind||LABEL[p.type])}</span><span>${fmt(p.d)}</span>
-      <a href="${nav}" target="_blank" rel="noopener">네이버지도</a>${/^https?:\/\//i.test(p.web||'')?`<a href="${esc(p.web)}" target="_blank" rel="noopener">홈페이지</a>`:''}</div>${p.addr?`<div class="m">${esc(p.addr)}</div>`:''}${p.info?`<div class="m">🕘 ${esc(p.info)}</div>`:''}${p.tel||p.oper?`<div class="m">${[p.oper,p.tel].filter(Boolean).map(esc).join(' · ')}</div>`:''}`;
+      <a href="${nav}" target="_blank" rel="noopener">네이버지도</a>${/^https?:\/\//i.test(p.web||'')?`<a href="${esc(p.web)}" target="_blank" rel="noopener">홈페이지</a>`:''}</div>${p.addr?`<div class="m">${esc(p.addr)}</div>`:''}${p.info?`<div class="m">${p.type==='festival'?'📅':'🕘'} ${esc(p.info)}</div>`:''}${p.desc?`<div class="m">${esc(p.desc)}</div>`:''}${p.tel||p.oper?`<div class="m">${[p.oper,p.tel].filter(Boolean).map(esc).join(' · ')}</div>`:''}`;
     el.onclick=e=>{if(e.target.tagName==='A')return;map.setCenter(LL(p.lat,p.lon));map.setZoom(17);open();if(p.cha)showDetail(p,el);};
     const ab=document.createElement('button'),sync=()=>{const on=inRoute(p);ab.className='add'+(on?' on':'');ab.textContent=on?'✔ 동선':'＋ 동선';};
     sync();ab.onclick=e=>{e.stopPropagation();if(toggleRoute(p)!==false)sync();};
     el.querySelector('.m').appendChild(ab);
     $('list').appendChild(el);
   });
-  const c={museum:0,art:0,heritage:0};shown.forEach(p=>c[p.type]++);
-  setStatus(`총 ${shown.length}곳 (박물관 ${c.museum} · 미술관 ${c.art} · 문화재 ${c.heritage})`+(note?` — ${note}`:''));
+  const c={museum:0,art:0,heritage:0,festival:0};shown.forEach(p=>c[p.type]++);
+  setStatus(`총 ${shown.length}곳 (박물관 ${c.museum} · 미술관 ${c.art} · 문화재 ${c.heritage} · 축제 ${c.festival})`+(note?` — ${note}`:''));
 }
 
 function setCenter(lat,lon,fit){
